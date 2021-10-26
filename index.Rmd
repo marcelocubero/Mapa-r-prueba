@@ -1,0 +1,119 @@
+---
+title: "Untitled"
+author: "Marcelo Cubero Sibaja"
+date: "26/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(flexdashboard)
+
+defaultEncoding <- "UTF8"
+library(dplyr)
+library(sf)
+library(terra)
+library(raster)
+library(DT)
+library(ggplot2)
+library(plotly)
+library(leaflet)
+library(leaflet.extras)
+```
+
+```{r datos , warning=FALSE, message=FALSE}
+casos <-
+  st_read("/vsicurl/https://marcelocubero.github.io/capas_proyecto/casos.geojson",
+          quiet = TRUE)
+casos <-
+  casos %>%
+  st_transform(4326)
+
+casos_ <-
+  read.csv(file = "https://marcelocubero.github.io/capas_proyecto/casos_.csv",
+           sep = ",",
+           encoding = "UTF-8")
+
+
+fallecidos <-
+  rast("/vsicurl/https://marcelocubero.github.io/capas_proyecto/fallecidos.tif")
+
+```
+
+### Mapa de casos de covid-19 en Costa Rica, para el viernes 22 de octubre del 2021
+
+```{r}
+
+fallecidos_rl <- raster::raster(fallecidos)
+bins <- c(10, 100, 500, 1000, 4000, 7600)
+pal <- colorBin("YlOrBr", domain = casos$activos, bins = bins)
+bins3 <- c(1, 5000, 10000, 20000, 40000, 52000)
+pal3 <- colorBin("Reds", domain = casos$positivos, bins = bins3)
+at <- seq(1:800)
+pal2 <- colorBin('Accent', domain = at , na.color = "transparent")
+
+
+leaflet() %>%
+  addTiles(group = "OSM") %>%
+  addProviderTiles(providers$Esri.NatGeoWorldMap , group = "NatGeo") %>%
+  addProviderTiles(providers$CartoDB.DarkMatter, group = "CartoDB-Black") %>%
+  addRasterImage(fallecidos_rl,
+                 opacity = 1,
+                 group = "Fallecidos",
+                 colors = pal2) %>%
+  addLegend("bottomleft",
+            pal = pal2,
+            values = at,
+            title = "Fallecidos") %>%
+  addPolygons(
+    data = casos,
+    color = "black",
+    fillColor = ~ pal(activos),
+    fillOpacity = 1,
+    weight = 1,
+    opacity = 1,
+    stroke = TRUE,
+    group = "Casos Activos", 
+    popup = paste0("<b>Cantón: </b>", casos$canton, "<br>", "<b>Casos activos: </b>", casos$activos) 
+  ) %>%
+  addLegend(
+    pal = pal,
+    values = casos$activos,
+    opacity = 1,
+    title = "Casos Activos"
+  ) %>%
+  addPolygons(
+    data = casos,
+    color = "black",
+    fillColor = ~ pal3(positivos),
+    fillOpacity = 1,
+    weight = 1,
+    opacity = 1,
+    stroke = TRUE,
+    group = "Casos Positivos", 
+    popup = paste0("<b>Cantón: </b>", casos$canton, "<br>", "<b>Casos positivos: </b>", casos$positivos )
+  ) %>%
+  addLegend(
+    pal = pal3,
+    values = casos$activos,
+    opacity = 1,
+    title = "Casos Positivos"
+  ) %>%
+  addLayersControl(
+    "bottomleft",
+    baseGroups = c("OSM", "NatGeo", "CartoDB-Black"),
+    overlayGroups = c("Fallecidos", "Casos Activos", "Casos Positivos" ),
+    options = layersControlOptions(collapsed = TRUE)
+  ) %>%
+  addScaleBar("bottomright") %>%
+  addMiniMap() %>% 
+  addResetMapButton() %>%
+  addFullscreenControl()
+
+  
+
+
+```
