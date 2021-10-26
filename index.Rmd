@@ -111,7 +111,8 @@ leaflet() %>%
   addScaleBar("bottomright") %>%
   addMiniMap() %>% 
   addResetMapButton() %>%
-  addFullscreenControl()
+  addFullscreenControl() %>%
+  addControlGPS()
 
   
 
